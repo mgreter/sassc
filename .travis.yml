@@ -10,7 +10,7 @@ env:
 
 before_install:
   - gem install sass
-  - git clone https://github.com/sass/libsass.git
+  - git clone https://github.com/mgreter/libsass.git -b api/c-interface
   - cd libsass && git submodule init && git submodule update && cd ..
   - export SASS_LIBSASS_PATH=libsass
 
