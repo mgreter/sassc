@@ -68,8 +68,8 @@ else
 endif
 
 ifneq ($(SASS_LIBSASS_PATH),)
-	CFLAGS   += -I $(SASS_LIBSASS_PATH)
-	CXXFLAGS += -I $(SASS_LIBSASS_PATH)
+	CFLAGS   += -I $(SASS_LIBSASS_PATH)/src
+	CXXFLAGS += -I $(SASS_LIBSASS_PATH)/src
 endif
 
 ifneq ($(EXTRA_CFLAGS),)
