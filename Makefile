@@ -170,12 +170,12 @@ build-static: $(RESOURCES) $(OBJECTS) $(LIB_STATIC)
 build-shared: $(RESOURCES) $(OBJECTS) $(LIB_SHARED)
 	$(MKDIR) bin/include
 	$(CP) $(LIB_SHARED) bin/
-	$(CP) $(SASS_LIBSASS_PATH)/sass.h bin/include
-	$(CP) $(SASS_LIBSASS_PATH)/sass2scss.h bin/include
-	$(CP) $(SASS_LIBSASS_PATH)/sass_values.h bin/include
-	$(CP) $(SASS_LIBSASS_PATH)/sass_version.h bin/include
-	$(CP) $(SASS_LIBSASS_PATH)/sass_context.h bin/include
-	$(CP) $(SASS_LIBSASS_PATH)/sass_functions.h bin/include
+	$(CP) $(SASS_LIBSASS_PATH)/include/sass.h bin/include
+	$(CP) $(SASS_LIBSASS_PATH)/include/sass2scss.h bin/include
+	$(CP) $(SASS_LIBSASS_PATH)/include/sass_values.h bin/include
+	$(CP) $(SASS_LIBSASS_PATH)/include/sass_version.h bin/include
+	$(CP) $(SASS_LIBSASS_PATH)/include/sass_context.h bin/include
+	$(CP) $(SASS_LIBSASS_PATH)/include/sass_functions.h bin/include
 	$(CC) $(LDFLAGS) -o $(TARGET) $^ $(LDLIBS)
 
 $(LIB_STATIC): libsass-static
