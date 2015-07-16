@@ -4,6 +4,7 @@ RM       ?= rm -f
 CP       ?= cp -a
 MKDIR    ?= mkdir -p
 WINDRES  ?= windres
+INSTALL  ?= install
 CFLAGS   ?= -Wall
 CXXFLAGS ?= -Wall
 LDFLAGS  ?= -Wall
@@ -32,6 +33,8 @@ else
 		endif
 	endif
 endif
+
+SASS_SASSC_PATH ?= $(shell pwd)
 
 ifeq ($(SASSC_VERSION),)
 	ifneq ($(wildcard ./.git/ ),)
@@ -68,8 +71,8 @@ else
 endif
 
 ifneq ($(SASS_LIBSASS_PATH),)
-	CFLAGS   += -I $(SASS_LIBSASS_PATH)/src
-	CXXFLAGS += -I $(SASS_LIBSASS_PATH)/src
+	CFLAGS   += -I $(SASS_LIBSASS_PATH)/include
+	CXXFLAGS += -I $(SASS_LIBSASS_PATH)/include
 endif
 
 ifneq ($(EXTRA_CFLAGS),)
