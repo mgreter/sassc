@@ -39,5 +39,6 @@ else
 endif
 
 bin_PROGRAMS = sassc
+sassc_LDADD = libsass.la
 sassc_SOURCES = sassc.c $(RESOURCES)
 sassc_LDFLAGS = $(AM_LDFLAGS) $(LDLIBS)
