@@ -51,7 +51,7 @@ else
 endif
 
 bin_PROGRAMS = sassc
-sassc_LDADD = libsass.la
+sassc_LDADD = $PREFIX/build/libsass.la
 sassc_SOURCES = sassc.c $(RESOURCES)
 sassc_CFLAGS = $(AM_CFLAGS) $(LIBSASS_CFLAGS)
 sassc_CXXFLAGS = $(AM_CXXFLAGS) $(LIBSASS_CFLAGS)

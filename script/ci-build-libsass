@@ -9,7 +9,7 @@ export SASS_SASSC_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/../ && pwd )"
 
 # use some defaults if not running under travis ci
 if [ "x$TRAVIS_BUILD_DIR" == "x" ]; then export TRAVIS_BUILD_DIR=$(pwd)/build; fi
-if [ "x$SASS_LIBSASS_PATH" == "x" ]; then export SASS_SASSC_PATH=$(pwd)/libsass; fi
+if [ "x$SASS_LIBSASS_PATH" == "x" ]; then export SASS_LIBSASS_PATH=$(pwd)/..; fi
 if [ "x$SASS_SPEC_PATH" == "x" ]; then export SASS_SPEC_PATH=$(pwd)/sass-spec; fi
 
 if [ "x$COVERAGE" == "xyes" ]; then
@@ -40,15 +40,15 @@ if [ "x$PREFIX" == "x" ]; then
   if [ "x$TRAVIS_BUILD_DIR" == "x" ]; then
     PREFIX=$SASS_LIBSASS_PATH/build
   else
-    PREFIX=$TRAVIS_BUILD_DIR/build
+    PREFIX=$TRAVIS_BUILD_DIR
   fi
 fi
 
 if [ "x$AUTOTOOLS" == "xyes" ]; then
 
   pushd $SASS_LIBSASS_PATH
-  echo -en 'travis_fold:start:libsass\r'
 
+  echo -en 'travis_fold:start:libsass\r'
   autoreconf --force --install
   ./configure --disable-tests $COVERAGE_OPT \
     --disable-silent-rules \
@@ -78,6 +78,7 @@ if [ "x$AUTOTOOLS" == "xyes" ]; then
   make $MAKE_OPTS clean
   # does what $BUILD says
   make $MAKE_OPTS all
+  make $MAKE_OPTS install
 
   mkdir -p bin
   cp -af sassc bin
@@ -85,10 +86,11 @@ if [ "x$AUTOTOOLS" == "xyes" ]; then
 else
 
   # always rebuild
-  make $MAKE_OPTS clean
+  # make $MAKE_OPTS clean
 
   # does what $BUILD says
   make $MAKE_OPTS all
+  make $MAKE_OPTS install
 
   # sassc has static as dep
   echo make $MAKE_OPTS $PREFIX/bin/sassc
