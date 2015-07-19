@@ -21,7 +21,7 @@ AC_ARG_WITH([libsass-lib],
   [AS_HELP_STRING([--with-libsass-lib],
     [location of the libsass library])],
   [AC_MSG_WARN([use of --with-libsass-lib is discouraged!
-  use official syntax: ./configure --with-libsass="prefix"])]
+  use new syntax: ./configure --with-libsass="prefix"])]
   [LDFLAGS="$LDFLAGS -L$withval"])
 
 # this is discouraged, use `with-libsass`:
@@ -30,14 +30,14 @@ AC_ARG_WITH([libsass-include],
   [AS_HELP_STRING([--with-libsass-include],
     [location of the libsass headers])],
   [AC_MSG_WARN([use of --with-libsass-include is discouraged,
-  use official syntax: ./configure --with-libsass="prefix"])]
+  use new syntax: ./configure --with-libsass="prefix"])]
   [CPPFLAGS="$CPPFLAGS -I$withval"])
 
 # the new prefered way
 # only need install path
 AC_ARG_WITH([libsass],
   [AS_HELP_STRING([--with-libsass],
-    [location of the libsass installation])],
+    [libsass install location])],
   [LDFLAGS="$LDFLAGS -L$withval/lib"]
   [CPPFLAGS="$CPPFLAGS -I$withval/include"])
 
