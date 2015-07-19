@@ -27,8 +27,6 @@ else
   AM_LDFLAGS += -std=c++0x -ldl
 endif
 
-LDLIBS = -lstdc++ -lm
-
 if ENABLE_COVERAGE
   AM_CFLAGS += -O0 --coverage
   AM_CXXFLAGS += -O0 --coverage
@@ -39,6 +37,9 @@ else
 endif
 
 bin_PROGRAMS = sassc
-sassc_LDADD = libsass.la
 sassc_SOURCES = sassc.c $(RESOURCES)
 sassc_LDFLAGS = $(AM_LDFLAGS) $(LDLIBS)
+
+# Dummy C++ source to cause C++ linking.
+# Otherwise the plain C linker is used
+nodist_EXTRA_sassc_SOURCES = dummy.cxx

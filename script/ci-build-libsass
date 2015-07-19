@@ -77,7 +77,7 @@ if [ "x$AUTOTOOLS" == "xyes" ]; then
 fi
 
 # always rebuild
-# make $MAKE_OPTS clean
+make $MAKE_OPTS clean
 # does what $BUILD says
 make $MAKE_OPTS all
 make $MAKE_OPTS install
