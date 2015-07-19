@@ -66,36 +66,21 @@ if [ "x$AUTOTOOLS" == "xyes" ]; then
 
   echo -en 'travis_fold:start:configure\r'
   autoreconf --force --install
-  ./configure --enable-tests $COVERAGE_OPT \
+  ./configure \
+    --with-libsass="$PREFIX" \
     --disable-silent-rules \
-    --with-libsass-include=$SASS_LIBSASS_PATH \
-    --with-libsass-lib=$PREFIX/lib \
     --prefix=$PREFIX \
+    $COVERAGE_OPT \
     ${SHARED_OPT}
   echo -en 'travis_fold:end:configure\r'
 
-  # always rebuild
-  make $MAKE_OPTS clean
-  # does what $BUILD says
-  make $MAKE_OPTS all
-  make $MAKE_OPTS install
-
-  mkdir -p bin
-  cp -af sassc bin
-
-else
-
-  # always rebuild
-  # make $MAKE_OPTS clean
-
-  # does what $BUILD says
-  make $MAKE_OPTS all
-  make $MAKE_OPTS install
-
-  # sassc has static as dep
-  echo make $MAKE_OPTS $PREFIX/bin/sassc
-
 fi
+
+# always rebuild
+make $MAKE_OPTS clean
+# does what $BUILD says
+make $MAKE_OPTS all
+make $MAKE_OPTS install
 
 echo successfully compiled sassc
 echo AUTOTOOLS=$AUTOTOOLS COVERAGE=$COVERAGE BUILD=$BUILD
