@@ -1,11 +1,19 @@
+OS       ?= $(shell uname -s)
 CC       ?= gcc
 CXX      ?= g++
 RM       ?= rm -f
 CP       ?= cp -a
 CHDIR    ?= chdir
 MKDIR    ?= mkdir
+RMDIR    ?= rmdir
 WINDRES  ?= windres
+# Solaris/Illumos flavors
+# ginstall from coreutils
+ifeq ($(OS),SunOS)
+INSTALL  ?= ginstall
+else
 INSTALL  ?= install
+endif
 CFLAGS   ?= -Wall
 CXXFLAGS ?= -Wall
 LDFLAGS  ?= -Wall
@@ -15,7 +23,6 @@ ifneq "$(COVERAGE)" "yes"
   LDFLAGS  += -O2
 endif
 LDFLAGS  += -Wl,-undefined,error
-CAT      ?= $(if $(filter $(OS),Windows_NT),type,cat)
 
 # If you run this under windows cmd.com interpreter:
 # You must provide UnxUtils rm.exe and cp.exe in path
@@ -26,23 +33,34 @@ ifneq (,$(findstring /cygdrive/,$(PATH)))
 	UNAME := Cygwin
 	TARGET := Windows
 else
-	ifneq (,$(findstring Windows,$(PATH)))
+	ifneq (,$(findstring Windows_NT,$(OS)))
 		UNAME := Windows
 		TARGET := Windows
 	else
-		ifneq (,$(findstring mingw32,$(MAKE)))
-			UNAME := MinGW
+		ifneq (,$(findstring Windows,$(PATH)))
+			UNAME := Windows
 			TARGET := Windows
 		else
-			ifneq (,$(findstring MINGW32,$(shell uname -s)))
-				UNAME = MinGW
+			ifneq (,$(findstring mingw32,$(MAKE)))
+				UNAME := MinGW
 				TARGET := Windows
 			else
-				UNAME := $(shell uname -s)
-				TARGET := $(shell uname -s)
+				ifneq (,$(findstring MINGW32,$(shell uname -s)))
+					UNAME = MinGW
+					TARGET := Windows
+				else
+					UNAME := $(shell uname -s)
+					TARGET := $(shell uname -s)
+				endif
 			endif
 		endif
 	endif
+endif
+
+ifeq (Windows,$(TARGET))
+	CAT ?= type
+else
+	CAT ?= cat
 endif
 
 ifeq ($(SASS_SASSC_PATH),)
@@ -91,8 +109,8 @@ ifneq ($(SASS_LIBSASS_PATH),)
 	CXXFLAGS += -I $(SASS_LIBSASS_PATH)/include
 	# only needed to support old source tree
 	# we have moved the files to src folder
-	CFLAGS   += -I $(SASS_LIBSASS_PATH)
-	CXXFLAGS += -I $(SASS_LIBSASS_PATH)
+	# CFLAGS   += -I $(SASS_LIBSASS_PATH)
+	# CXXFLAGS += -I $(SASS_LIBSASS_PATH)
 else
 	# this is needed for mingw
 	CFLAGS   += -I include
@@ -147,7 +165,11 @@ endif
 
 ifeq (,$(PREFIX))
 	ifeq (,$(TRAVIS_BUILD_DIR))
-		PREFIX = /usr/local
+		ifeq ($(OS),SunOS)
+			PREFIX = /opt/local
+		else
+			PREFIX = /usr/local
+		endif
 	else
 		PREFIX = $(TRAVIS_BUILD_DIR)
 	endif
@@ -169,13 +191,16 @@ ifeq (Windows,$(TARGET))
 		LIB_SHARED  = $(SASS_LIBSASS_PATH)/lib/libsass.dll
 	endif
 else
-	CFLAGS   += -fPIC
-	CXXFLAGS += -fPIC
-	LDFLAGS  += -fPIC
+	ifneq (Cygwin,$(UNAME))
+		CFLAGS   += -fPIC
+		CXXFLAGS += -fPIC
+		LDFLAGS  += -fPIC
+	endif
 endif
 
 OBJECTS = $(SOURCES:.c=.o)
 SPEC_PATH = $(SASS_SPEC_PATH)
+
 all: sassc
 
 sassc: $(SASSC_EXE)
@@ -221,6 +246,15 @@ endif
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.rc
+	$(WINDRES) -i $< -o $@
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+%: %.o static
+	$(CXX) $(CXXFLAGS) -o $@ $+ $(LDFLAGS) $(LDLIBS)
 
 test: all
 	$(MAKE) -C $(SASS_LIBSASS_PATH) version
