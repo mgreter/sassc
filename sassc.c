@@ -330,5 +330,7 @@ int main(int argc, char** argv) {
         result = compile_stdin(options, outfile);
     }
 
+    sass_delete_options(options);
+
     return result;
 }
