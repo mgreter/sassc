@@ -182,6 +182,15 @@ all: sassc
 
 sassc: $(SASSC_EXE)
 
+%.o: %.c
+        $(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.rc
+        $(WINDRES) -i $< -o $@
+
+%.o: %.cpp
+        $(CXX) $(CXXFLAGS) -c -o $@ $<
+
 $(SASSC_EXE): libsass build-$(BUILD)
 
 $(DESTDIR)$(PREFIX)/:
