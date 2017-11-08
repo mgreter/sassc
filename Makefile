@@ -213,6 +213,8 @@ build-shared: $(RESOURCES) $(OBJECTS) $(LIB_SHARED)
 build-shared-dev: $(RESOURCES) $(OBJECTS) $(LIB_SHARED)
 	$(CC) $(LDFLAGS) -o $(SASSC_EXE) $^ $(LDLIBS)
 
+build-static-dev: build-static
+
 $(LIB_STATIC): libsass-static
 $(LIB_SHARED): libsass-shared
 

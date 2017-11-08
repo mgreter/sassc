@@ -63,7 +63,7 @@ curl -L https://github.com/sass/sassc/archive/${SASSC_VERSION}.tar.gz | tar -xz;
 curl -L https://github.com/sass/libsass/archive/${LIBSASS_VERSION}.tar.gz | tar -xz;
 # set environment variable for sassc makefile
 SASS_LIBSASS_PATH=`pwd`/libsass-${LIBSASS_VERSION}
-# create version files for git-less build
+# create version files for standalone build
 echo $SASSC_VERSION > sassc-${SASSC_VERSION}/VERSION
 echo $LIBSASS_VERSION > libsass-${LIBSASS_VERSION}/VERSION
 # compile libsass and sassc binary
