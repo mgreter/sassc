@@ -165,9 +165,13 @@ ifeq (Windows,$(TARGET))
 		LIB_SHARED  = $(SASS_LIBSASS_PATH)/lib/libsass.dll
 	endif
 else
+ifdef WASM
+	SASSC_EXE = bin/sassc.wasm
+else
 	CFLAGS   += -fPIC
 	CXXFLAGS += -fPIC
 	LDFLAGS  += -fPIC
+endif
 endif
 
 OBJECTS = $(SOURCES:.c=.o)
