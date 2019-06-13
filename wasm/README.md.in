@@ -1,0 +1,15 @@
+Example of using sassc.wasm compiled for WASI.
+
+# Prerequisites
+
+Use node v12
+
+# Examples
+
+```
+sassc-wasi -v
+sassc-wasi ./test.sass
+sassc-wasi ./test.sass ./test.css
+```
+
+Note: Use "./" prefix in the path for the file names.
