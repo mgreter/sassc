@@ -14,6 +14,16 @@ ifneq "$(COVERAGE)" "yes"
   CXXFLAGS += -O2
   LDFLAGS  += -O2
 endif
+ifeq "$(LIBSASS_GPO)" "generate"
+  CFLAGS   += -fprofile-generate
+  CXXFLAGS += -fprofile-generate
+  LDFLAGS  += -fprofile-generate -Wl,-fprofile-instr-generate
+endif
+ifeq "$(LIBSASS_GPO)" "use"
+  CFLAGS   += -fprofile-use
+  CXXFLAGS += -fprofile-use
+  LDFLAGS  += -fprofile-use -Wl,-fprofile-instr-use
+endif
 LDFLAGS  += -Wl,-undefined,error
 CAT      ?= $(if $(filter $(OS),Windows_NT),type,cat)
 

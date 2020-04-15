@@ -25,6 +25,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <windows.h>
+#include <wincon.h>
 
 #define isatty(h) _isatty(h)
 #define fileno(m) _fileno(m)
@@ -39,6 +40,7 @@ int get_argv_utf8(int* argc_ptr, char*** argv_ptr) {
   for (i = 0; i < argc; i++)
     size += WideCharToMultiByte(CP_UTF8, 0, argv_utf16[i], -1, 0, 0, 0, 0);
   argv = malloc(size);
+  if (argv == NULL) return 0;
   for (i = 0; i < argc; i++) {
     argv[i] = (char*) argv + offset;
     offset += WideCharToMultiByte(CP_UTF8, 0, argv_utf16[i], -1,
@@ -56,9 +58,11 @@ int get_argv_utf8(int* argc_ptr, char*** argv_ptr) {
 int output(int error_status, const char* error_message, const char* output_string, const char* outfile) {
     if (error_status) {
         if (error_message) {
-            fprintf(stderr, "%s", error_message);
+          // Only needed on windows!?
+          sass_print_stderr(error_message);
+          // fprintf(stderr, "%s", error_message);
         } else {
-            fprintf(stderr, "An error occurred; no error message available.\n");
+            fprintf(stderr, "An error occurred, but no reason was given.\n");
         }
         return 1;
     } else if (output_string) {
@@ -83,14 +87,14 @@ int output(int error_status, const char* error_message, const char* output_strin
         }
         return 0;
     } else {
-        fprintf(stderr, "Unknown internal error.\n");
+        fprintf(stderr, "%s", "Unknown internal error.\n");
         return 2;
     }
 }
 
-int compile_stdin(struct Sass_Options* options, char* outfile) {
+int compile_stdin(struct SassOptionsCpp* options, char* outfile) {
     int ret;
-    struct Sass_Data_Context* ctx;
+    struct SassDataContextCpp* ctx;
     char buffer[BUFSIZE];
     size_t size = 1;
     char *source_string = malloc(sizeof(char) * BUFSIZE);
@@ -133,9 +137,10 @@ int compile_stdin(struct Sass_Options* options, char* outfile) {
     }
 
     ctx = sass_make_data_context(source_string);
-    struct Sass_Context* ctx_out = sass_data_context_get_context(ctx);
+    struct SassContextCpp* ctx_out = sass_data_context_get_context(ctx);
     sass_data_context_set_options(ctx, options);
     sass_compile_data_context(ctx);
+    sass_context_print_stderr(ctx_out);
     ret = output(
         sass_context_get_error_status(ctx_out),
         sass_context_get_error_message(ctx_out),
@@ -146,16 +151,17 @@ int compile_stdin(struct Sass_Options* options, char* outfile) {
     return ret;
 }
 
-int compile_file(struct Sass_Options* options, char* input_path, char* outfile) {
+int compile_file(struct SassOptionsCpp* options, char* input_path, char* outfile) {
     int ret;
-    struct Sass_File_Context* ctx = sass_make_file_context(input_path);
-    struct Sass_Context* ctx_out = sass_file_context_get_context(ctx);
+    struct SassFileContextCpp* ctx = sass_make_file_context(input_path);
+    struct SassContextCpp* ctx_out = sass_file_context_get_context(ctx);
     if (outfile) sass_option_set_output_path(options, outfile);
     const char* srcmap_file = sass_option_get_source_map_file(options);
     sass_option_set_input_path(options, input_path);
     sass_file_context_set_options(ctx, options);
 
     sass_compile_file_context(ctx);
+    sass_context_print_stderr(ctx_out);
 
     ret = output(
         sass_context_get_error_status(ctx_out),
@@ -238,6 +244,7 @@ int main(int argc, char** argv) {
 #endif
 #ifdef _WIN32
     get_argv_utf8(&argc, &argv);
+    SetConsoleOutputCP(65001);
 #endif
     if ((argc == 1) && isatty(fileno(stdin))) {
         print_usage(argv[0]);
@@ -248,7 +255,7 @@ int main(int argc, char** argv) {
     int from_stdin = 0;
     bool auto_source_map = false;
     bool generate_source_map = false;
-    struct Sass_Options* options = sass_make_options();
+    struct SassOptionsCpp* options = sass_make_options();
     sass_option_set_output_style(options, SASS_STYLE_NESTED);
     sass_option_set_precision(options, 10);
 
@@ -326,7 +333,7 @@ int main(int argc, char** argv) {
             if (sass_option_get_precision(options) < 0) sass_option_set_precision(options, 10);
             break;
         case 'a':
-            sass_option_set_is_indented_syntax_src(options, true);
+            // sass_option_set_is_indented_syntax_src(options, true);
             break;
         case 'v':
             print_version();
