@@ -151,36 +151,94 @@ int compile_stdin(struct SassOptionsCpp* options, char* outfile) {
     return ret;
 }
 
-int compile_file(struct SassOptionsCpp* options, char* input_path, char* outfile) {
-    int ret;
-    struct SassFileContextCpp* ctx = sass_make_file_context(input_path);
-    struct SassContextCpp* ctx_out = sass_file_context_get_context(ctx);
-    if (outfile) sass_option_set_output_path(options, outfile);
-    const char* srcmap_file = sass_option_get_source_map_file(options);
-    sass_option_set_input_path(options, input_path);
-    sass_file_context_set_options(ctx, options);
 
-    sass_compile_file_context(ctx);
-    sass_context_print_stderr(ctx_out);
+int compile_file2(struct SassContextReal* context, char* input_path, char* outfile) {
+  int ret;
+  // struct SassFileContextCpp* ctx = sass_make_file_context(input_path);
+  // struct SassContextCpp* ctx_out = sass_file_context_get_context(ctx);
+  if (outfile) sass_context_set_output_path(context, outfile);
+  const char* srcmap_file = sass_context_get_source_map_file(context);
+  sass_context_set_input_path(context, input_path);
+  sass_compile_file_context2(context, input_path);
+  sass_context_print_stderr2(context);
 
+  ret = output(
+    sass_context_get_error_status2(context),
+    sass_context_get_error_message2(context),
+    sass_context_get_output_string2(context),
+    outfile
+  );
+
+  if (ret == 0 && srcmap_file) {
     ret = output(
-        sass_context_get_error_status(ctx_out),
-        sass_context_get_error_message(ctx_out),
-        sass_context_get_output_string(ctx_out),
-        outfile
+      sass_context_get_error_status2(context),
+      sass_context_get_error_message2(context),
+      sass_context_get_source_map_string2(context),
+      srcmap_file
     );
+  }
 
-    if (ret == 0 && srcmap_file) {
-        ret = output(
-            sass_context_get_error_status(ctx_out),
-            sass_context_get_error_message(ctx_out),
-            sass_context_get_source_map_string(ctx_out),
-            srcmap_file
-        );
+  // sass_delete_file_context(ctx);
+  return ret;
+}
+
+int compile_stdin2(struct SassContextReal* context, char* outfile) {
+  int ret;
+  // struct SassDataContextCpp* ctx;
+  char buffer[BUFSIZE];
+  size_t size = 1;
+  char* source_string = malloc(sizeof(char) * BUFSIZE);
+
+  if (source_string == NULL) {
+    perror("Allocation failed");
+#ifdef _WIN32
+    exit(ERROR_OUTOFMEMORY);
+#else
+    exit(EX_OSERR); // system error (e.g., can't fork)
+#endif
+  }
+
+  source_string[0] = '\0';
+
+  while (fgets(buffer, BUFSIZE, stdin)) {
+    char* old = source_string;
+    size += strlen(buffer);
+    source_string = realloc(source_string, size);
+    if (source_string == NULL) {
+      perror("Reallocation failed");
+      free(old);
+#ifdef _WIN32
+      exit(ERROR_OUTOFMEMORY);
+#else
+      exit(EX_OSERR); // system error (e.g., can't fork)
+#endif
     }
+    strcat(source_string, buffer);
+  }
 
-    sass_delete_file_context(ctx);
-    return ret;
+  if (ferror(stdin)) {
+    free(source_string);
+    perror("Error reading standard input");
+#ifdef _WIN32
+    exit(ERROR_READ_FAULT); //
+#else
+    exit(EX_IOERR); // input/output error
+#endif
+  }
+
+  // ctx = sass_make_data_context(source_string);
+  // struct SassContextCpp* ctx_out = sass_data_context_get_context(ctx);
+  // sass_data_context_set_options(ctx, options);
+  sass_compile_data_context2(context, source_string);
+  sass_context_print_stderr2(context);
+  ret = output(
+    sass_context_get_error_status2(context),
+    sass_context_get_error_message2(context),
+    sass_context_get_output_string2(context),
+    outfile
+  );
+  // sass_delete_data_context(ctx);
+  return ret;
 }
 
 struct
@@ -250,14 +308,77 @@ int main(int argc, char** argv) {
         print_usage(argv[0]);
         return 0;
     }
+    /*
+    struct SassValue* map = sass_make_map();
+
+    struct SassValue* v1 = sass_make_number(23, "px/in");
+    struct SassValue* v2 = sass_make_number(23, "px/in");
+    struct SassValue* v3 = sass_make_number(25, "px/in");
+    sass_map_set(map, v1, v2);
+    sass_map_set(map, v3, v2);
+    sass_delete_value(v1);
+    sass_delete_value(v2);
+
+    struct SassValue* key = sass_make_number(23, "px/in");
+    struct SassValue* qwe = sass_map_get(map, key);
+
+    sass_number_set_value(qwe, 23.3);
+    sass_number_set_unit(qwe, "foobar");
+
+    struct SassMapIterator* it = sass_map_make_iterator(map);
+    while (!sass_map_iterator_exhausted(it)) {
+      struct SassValue* key = sass_map_iterator_get_key(it);
+      printf("result %f\n", sass_number_get_value(key));
+      printf("result %s\n", sass_number_get_unit(key));
+      sass_map_iterator_next(it);
+    }
+    sass_map_delete_iterator(it);
+
+    sass_number_set_value(v3, 673.3);
+
+    it = sass_map_make_iterator(map);
+    while (!sass_map_iterator_exhausted(it)) {
+      struct SassValue* key = sass_map_iterator_get_key(it);
+      printf("result %f\n", sass_number_get_value(key));
+      printf("result %s\n", sass_number_get_unit(key));
+      sass_map_iterator_next(it);
+    }
+    sass_map_delete_iterator(it);
+
+    printf("result %f\n", sass_number_get_value(qwe));
+    printf("result %s\n", sass_number_get_unit(qwe));
+
+    sass_delete_value(map);
+
+    exit(1);
+    */
+
+    struct SassContextReal* context = sass_make_context();
+    sass_context_set_output_style(context, SASS_STYLE_NESTED);
+    sass_context_set_precision(context, 9);
+    printf("result %d\n", sass_context_get_precision(context));
+
+    struct SassImportCpp* entry = sass_make_file_import("input.scss");
+
+    struct SassCompiler322* compiler = sass_make_compiler3(context, entry);
+
+    sass_compiler_parse322(compiler);
+    sass_compiler_compile322(compiler);
+    sass_compiler_render322(compiler);
+
+    puts(sass_compiler_get_output(compiler));
+
+    exit(1);
 
     char *outfile = 0;
     int from_stdin = 0;
     bool auto_source_map = false;
     bool generate_source_map = false;
+
     struct SassOptionsCpp* options = sass_make_options();
     sass_option_set_output_style(options, SASS_STYLE_NESTED);
     sass_option_set_precision(options, 10);
+
 
     int c;
     size_t i;
@@ -278,7 +399,7 @@ int main(int argc, char** argv) {
         { "help",               no_argument,       0, 'h' },
         { NULL,                 0,                 NULL, 0}
     };
-    while ((c = getopt_long(argc, argv, "vhslm::Map:t:I:P:", long_options, &long_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "vhslm::SassMap:t:I:P:", long_options, &long_index)) != -1) {
         switch (c) {
         case 's':
             from_stdin = 1;
@@ -292,8 +413,9 @@ int main(int argc, char** argv) {
         case 't':
             for(i = 0; i < NUM_STYLE_OPTION_STRINGS; ++i) {
                 if(strcmp(optarg, style_option_strings[i].style_string) == 0) {
-                    sass_option_set_output_style(options, style_option_strings[i].output_style);
-                    break;
+                  sass_option_set_output_style(options, style_option_strings[i].output_style);
+                  sass_context_set_output_style(context, style_option_strings[i].output_style);
+                  break;
                 }
             }
             if(i == NUM_STYLE_OPTION_STRINGS) {
@@ -306,14 +428,16 @@ int main(int argc, char** argv) {
             }
             break;
         case 'l':
-            sass_option_set_source_comments(options, true);
-            break;
+          sass_option_set_source_comments(options, true);
+          sass_context_set_source_comments(context, true);
+          break;
         case 'm':
             if (optarg) { // optional argument
               if (strcmp(optarg, "auto") == 0) {
                 auto_source_map = true;
               } else if (strcmp(optarg, "inline") == 0) {
                 sass_option_set_source_map_embed(options, true);
+                sass_context_set_source_map_embed(context, true);
               } else {
                 fprintf(stderr, "Invalid argument for -m flag: '%s'. Allowed arguments are:", optarg);
                 fprintf(stderr, " %s", "auto inline");
@@ -326,11 +450,13 @@ int main(int argc, char** argv) {
             generate_source_map = true;
             break;
         case 'M':
-            sass_option_set_omit_source_map_url(options, true);
-            break;
+          sass_option_set_omit_source_map_url(options, true);
+          sass_context_set_omit_source_map_url(context, true);
+          break;
         case 'p':
-            sass_option_set_precision(options, atoi(optarg)); // TODO: make this more robust
-            if (sass_option_get_precision(options) < 0) sass_option_set_precision(options, 10);
+          sass_option_set_precision(options, atoi(optarg)); // TODO: make this more robust
+          sass_context_set_precision(context, atoi(optarg)); // TODO: make this more robust
+          if (sass_context_get_precision(context) < 0) sass_context_set_precision(context, 10);
             break;
         case 'a':
             // sass_option_set_is_indented_syntax_src(options, true);
@@ -338,10 +464,12 @@ int main(int argc, char** argv) {
         case 'v':
             print_version();
             sass_delete_options(options);
+            sass_delete_context(context);
             return 0;
         case 'h':
             print_usage(argv[0]);
             sass_delete_options(options);
+            sass_delete_context(context);
             return 0;
         case '?':
             /* Unrecognized flag or missing an expected value */
@@ -350,6 +478,7 @@ int main(int argc, char** argv) {
         default:
             fprintf(stderr, "Unknown error while processing arguments\n");
             sass_delete_options(options);
+            sass_delete_context(context);
             return 2;
         }
     }
@@ -371,18 +500,22 @@ int main(int argc, char** argv) {
             strcpy(source_map_file, outfile);
             strcat(source_map_file, extension);
             sass_option_set_source_map_file(options, source_map_file);
+            sass_context_set_source_map_file(context, source_map_file);
         } else if (auto_source_map) {
             sass_option_set_source_map_embed(options, true);
+            sass_context_set_source_map_embed(context, true);
         }
-        result = compile_file(options, argv[optind], outfile);
+        // result = compile_file(options, argv[optind], outfile);
+        result = compile_file2(context, argv[optind], outfile);
     } else {
         if (optind < argc) {
             outfile = argv[optind];
         }
-        result = compile_stdin(options, outfile);
+        result = compile_stdin2(context, outfile);
     }
 
     sass_delete_options(options);
+    sass_delete_context(context);
 
     #ifdef _WIN32
         return result ? ERROR_INVALID_DATA : 0; // The data is invalid.
