@@ -105,7 +105,7 @@ int process_results(struct SassCompiler* compiler, const char* outfile2, bool qu
 
     // Write or print output
     if (content || footer) {
-      if (outfile) {
+      if (sass_compiler_has_output_file(compiler)) {
         FILE* fd = fopen(outfile, "wb");
         if (!fd) {
           perror("Error opening output file");
