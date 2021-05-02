@@ -273,10 +273,7 @@ int main(int argc, char** argv)
   int long_index = 0;
   bool quiet = false;
   bool from_stdin = false;
-  bool auto_source_map = false;
-  bool generate_source_map = false;
-  bool source_map_embed = false;
-  bool omit_source_map_url = false;
+//   bool omit_source_map_url = false;
   enum SassImportSyntax format = SASS_IMPORT_AUTO;
 
   // LoggerStyle
@@ -423,8 +420,6 @@ int main(int argc, char** argv)
         sass_compiler_set_srcmap_mode(compiler,
           SASS_SRCMAP_CREATE);
       }
-      // enable source-map generation
-      generate_source_map = true;
       break;
     case 'p': // precision
       sass_compiler_set_precision(compiler, atoi(optarg)); // TODO: make this more robust
@@ -466,20 +461,6 @@ int main(int argc, char** argv)
     if (optind + 1 < argc) {
       outfile = argv[optind + 1];
     }
-    if (generate_source_map && outfile) {
-      // const char* extension = ".map";
-      // source_map_file = calloc(strlen(outfile) + strlen(extension) + 1, sizeof(char));
-      // ToDo: Do this on the C++ side!?
-      // strcpy(source_map_file, outfile);
-      // strcat(source_map_file, extension);
-      // sass_context_set_source_map_file(context, source_map_file);
-      printf(stderr, "Hello %s\n", sass_compiler_get_srcmap_path(compiler));
-    }
-    else if (auto_source_map) {
-      // sass_context_set_source_map_embed(context, true);
-      source_map_embed = true;
-    }
-
     // Create the entry point request (don't read yet)
     entry = sass_make_file_import(argv[optind]);
 
