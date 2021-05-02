@@ -80,87 +80,6 @@ int get_argv_utf8(int* argc_ptr, char*** argv_ptr)
 #include <sysexits.h>
 #endif
 
-int process_results(struct SassCompiler* compiler, const char* outfile2, bool quiet)
-{
-
-  const char* outfile = sass_compiler_get_output_path(compiler);
-  const char* srcmapfile = sass_compiler_get_srcmap_path(compiler);
-
-  if (!quiet && sass_compiler_get_warn_string(compiler)) {
-    sass_print_stderr(sass_compiler_get_warn_string(compiler));
-  }
-
-  // Print error message if we have an error
-  if (sass_compiler_get_status(compiler) != 0) {
-    const struct SassError* error = sass_compiler_get_error(compiler);
-    sass_print_stderr(sass_error_get_formatted(error));
-  }
-
-  // Write to output if no errors occurred
-  if (sass_compiler_get_status(compiler) == 0) {
-
-    // Get the parts to be added to the output file (or stdout)
-    const char* content = sass_compiler_get_output_string(compiler);
-    const char* footer = sass_compiler_get_footer_string(compiler);
-
-    // Write or print output
-    if (content || footer) {
-      if (sass_compiler_has_output_file(compiler)) {
-        FILE* fd = fopen(outfile, "wb");
-        if (!fd) {
-          perror("Error opening output file");
-          return 1;
-        }
-        // Seems already set (makes sense)
-        // setvbuf(fp, 0, _IOFBF, BUFSIZ);
-        if (content && fputs(content, fd) < 0) {
-          perror("Error writing to output file");
-          fclose(fd);
-          return 1;
-        }
-        if (footer && fputs(footer, fd) < 0) {
-          perror("Error writing to output file");
-          fclose(fd);
-          return 1;
-        }
-        fclose(fd);
-      }
-      else {
-        #ifdef _WIN32
-        // deliberately ignore the return value
-        (void)setmode(fileno(stdout), O_BINARY);
-        #endif
-        if (content) printf("%s", content);
-        if (footer) printf("%s", footer);
-      }
-    }
-
-    // Write source-map if needed
-    if (sass_compiler_has_srcmap_file(compiler)) {
-      const char* srcmap = sass_compiler_get_srcmap_string(compiler);
-      FILE* fd = fopen(srcmapfile, "wb");
-      if (!fd) {
-        perror("Error opening source-map output file");
-        return 1;
-      }
-      // Seems already set (makes sense)
-      // setvbuf(fp, 0, _IOFBF, BUFSIZ);
-      if (srcmap && fputs(srcmap, fd) < 0) {
-        perror("Error writing to output file");
-        fclose(fd);
-        return 1;
-      }
-      fclose(fd);
-    }
-
-  }
-
-  // Return the original error status
-  return sass_compiler_get_status(compiler);
-
-}
-// EO output
-
 struct
 {
   char* string;
@@ -486,14 +405,8 @@ int main(int argc, char** argv)
   // prepare everything for you to do the actual writing.
   sass_compiler_set_output_path(compiler, outfile);
 
-  // Execute all compiler phases
-  // Will skip steps if one errors
-  sass_compiler_parse(compiler);
-  sass_compiler_compile(compiler);
-  sass_compiler_render(compiler);
-
-  // Process the results, write to disk and print stuff
-  int result = process_results(compiler, outfile, quiet);
+  // Execute all compiler steps and write/print results
+  int result = sass_compiler_execute(compiler, quiet);
 
   // Everything done, now clean-up
   sass_delete_compiler(compiler);
