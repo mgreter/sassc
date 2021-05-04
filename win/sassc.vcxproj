@@ -203,11 +203,7 @@
   </ItemDefinitionGroup>
   <Import Project="$(LIBSASS_DIR)\win\libsass.targets" />
   <ItemGroup>
-    <ClCompile Include="posix\getopt.c" />
     <ClCompile Include="..\sassc.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="posix\getopt.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

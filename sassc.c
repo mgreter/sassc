@@ -1,3 +1,6 @@
+/*****************************************************************************/
+/* Part of SassC, released under the MIT license (See LICENSE.txt).        */
+/*****************************************************************************/
 #ifdef _MSC_VER
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS 1
@@ -7,10 +10,12 @@
 #endif
 #endif
 
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include <sass.h>
 #include "sassc_version.h"
 
@@ -29,21 +34,11 @@ static int AvoidMessageBoxHook(int ReportType, char* Message, int* Return) {
 }
 #endif
 
-#define BUFSIZE 512
-#ifdef _WIN32
-#define PATH_SEP ';'
-#else
-#define PATH_SEP ':'
-#endif
-
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
 #include <windows.h>
 #include <wincon.h>
-
-#define isatty(h) _isatty(h)
-#define fileno(m) _fileno(m)
 
 // Normalize input arguments to utf8 encoding
 int get_argv_utf8(int* argc_ptr, char*** argv_ptr)
@@ -80,88 +75,25 @@ int get_argv_utf8(int* argc_ptr, char*** argv_ptr)
 #include <sysexits.h>
 #endif
 
-struct
+// Additional command to print all linked versions
+void getopt_version_cmd(struct SassGetOpt* getopt, union SassOptionValue value)
 {
-  char* string;
-  int type;
-}
-style_option_strings[] = {
-  { "compressed", SASS_STYLE_COMPRESSED },
-  { "compact", SASS_STYLE_COMPACT },
-  { "expanded", SASS_STYLE_EXPANDED },
-  { "nested", SASS_STYLE_NESTED }
-};
-
-#define NUM_STYLE_OPTION_STRINGS \
-    sizeof(style_option_strings) / sizeof(style_option_strings[0])
-
-struct
-{
-  char* string;
-  int type;
-}
-import_format_strings[] = {
-  { "auto", SASS_IMPORT_AUTO },
-  { "css", SASS_IMPORT_CSS },
-  { "sass", SASS_IMPORT_SASS },
-  { "scss", SASS_IMPORT_SCSS }
-};
-
-#define NUM_IMPORT_FORMAT_STRINGS \
-    sizeof(import_format_strings) / sizeof(import_format_strings[0])
-
-struct
-{
-  char* string;
-  int type;
-}
-src_map_mode_strings[] = {
-  { "none", SASS_SRCMAP_NONE },
-  { "create", SASS_SRCMAP_CREATE },
-  { "link", SASS_SRCMAP_EMBED_LINK },
-  { "embed", SASS_SRCMAP_EMBED_JSON }
-};
-
-#define NUM_SRC_MAP_MODE_STRINGS \
-    sizeof(src_map_mode_strings) / sizeof(src_map_mode_strings[0])
-
-void print_version() {
   printf("sassc: %s\n", SASSC_VERSION);
   printf("libsass: %s\n", libsass_version());
   printf("sass: %s\n", libsass_language_version());
+  exit(0);
 }
 
-void print_usage(char* argv0) {
-  // ToDo: we could make use of LibSass terminal color support
-  printf("Usage: %s [options] [INPUT] [OUTPUT]\n\n", argv0);
-  printf("Options:\n");
-  printf("   -s, --stdin                Read input from standard input instead of an input file.\n");
-  printf("   -t, --style=NAME           Set output style (nested, expanded, compact or compressed).\n");
-  printf("   -f, --format[=TYPE]        Set explicit input syntax (scss, sass, css or auto).\n");
-  printf("   -l, --line-comments        Emit comments showing original line numbers.\n");
-  printf("   -I, --include-path PATH    Add include path to look for imports.\n");
-  printf("   -P, --plugin-path PATH     Add plugin path to auto load plugins.\n");
-  printf("   -m, --sourcemap[=TYPE]     Create and emit source mappings.\n");
-  printf("         [TYPE] can be create, link (default) or embed.\n");
-  printf("       --sourcemap-file-urls  Emit absolute file:// urls in includes array.\n");
-  printf("   -C  --sourcemap-contents   Embed contents of imported files in source map.\n");
-  printf("   -M  --sourcemap-path       Set path where source map file is saved.\n");
-  printf("   -p, --precision            Set the precision for numbers.\n");
-  printf("       --[no-]unicode         Enable/Disable terminal unicode support.\n");
-  printf("       --[no-]color           Enable/Disable terminal ANSI color support.\n");
-  printf("   -v, --version              Display compiled versions.\n");
-  printf("   -h, --help                 Display this help message.\n");
-  printf("\n");
-}
-
-void invalid_usage(char* argv0) {
-    fprintf(stderr, "See '%s --help'\n", argv0);
-    #ifdef _WIN32
-        exit(ERROR_BAD_ARGUMENTS); // One or more arguments are not correct.
-    #else
-        exit(EX_USAGE); // command line usage error
-    #endif
-
+// Additional command to print help page to screen
+void getopt_help_cmd(struct SassGetOpt* getopt, union SassOptionValue value)
+{
+  char* usage = sass_getopt_get_help(getopt);
+  fprintf(stderr, "Usage: sassc [options] INPUT_FILE [OUTPUT_FILE]\n");
+  fprintf(stderr, "         set INPUT_FILE to '--' to read from stdin.\n");
+  fprintf(stderr, "\nOptions:\n");
+  sass_print_stderr(usage);
+  sass_free_c_string(usage);
+  exit(0);
 }
 
 int main(int argc, char** argv)
@@ -175,244 +107,53 @@ int main(int argc, char** argv)
   SetConsoleOutputCP(65001);
   #endif
 
-  if ((argc == 1) && isatty(fileno(stdin))) {
-    print_usage(argv[0]);
-    return 0;
-  }
+  // Massively increases output speed!
+  setvbuf(stderr, 0, _IOFBF, BUFSIZ);
+  setvbuf(stdout, 0, _IOLBF, BUFSIZ);
 
   // Create main compiler (also creates the logger)
   struct SassCompiler* compiler = sass_make_compiler();
 
-  // Massively increase output speed!
-  setvbuf(stderr, 0, _IOFBF, BUFSIZ);
-  setvbuf(stdout, 0, _IOLBF, BUFSIZ);
-
-  int c;
-  size_t i;
-  int long_index = 0;
-  bool quiet = false;
-  bool from_stdin = false;
-//   bool omit_source_map_url = false;
-  enum SassImportSyntax format = SASS_IMPORT_AUTO;
-
-  // LoggerStyle
-  static struct option long_options[] =
-  {
-      { "help",                 no_argument,       0, 'h' },
-      { "quiet",                no_argument,       0, 'q' },
-      { "version",              no_argument,       0, 'v' },
-      { "stdin",                no_argument,       0, 's' },
-      { "line-numbers",         no_argument,       0, 'l' },
-      { "line-comments",        no_argument,       0, 'l' },
-      { "sourcemap",            optional_argument, 0, 'm' },
-      { "sourcemap-file-urls",  no_argument,       0, 'F' },
-      { "sourcemap-contents",   no_argument,       0, 'C' },
-      { "sourcemap-path",       required_argument, 0, 'M' },
-      { "format",               required_argument, 0, 'f' },
-      { "include-path",         required_argument, 0, 'I' },
-      { "plugin-path",          required_argument, 0, 'P' },
-      { "style",                required_argument, 0, 't' },
-      // { "omit-map-comment",     no_argument,       0, 'M' },
-      { "precision",            required_argument, 0, 'p' },
-      { "color",                no_argument,       0, 'x' },
-      { "unicode",              no_argument,       0, 'y' },
-      { "no-color",             no_argument,       0, 'X' },
-      { "no-unicode",           no_argument,       0, 'Y' },
-      { NULL,                   0,                 NULL, 0}
-  };
-
   // Call auto-detection routines of LibSass
   sass_compiler_autodetect_logger_capabilities(compiler);
 
-  // optstring is a string containing the legitimate option characters.
-  // If such a character is followed by a colon, the option requires an
-  // argument, so getopt() places a pointer to the following text in the
-  // same argv - element, or the text of the following argv - element, in
-  // optarg. Two colons mean an option takes an optional arg; if there is
-  // text in the current argv - element(i.e., in the same word as the
-  // option name itself, for example, "-oarg"), then it is returned in
-  // optarg, otherwise optarg is set to zero. This is a GNU extension.
-  // If optstring contains W followed by a semicolon, then - W foo is
-  // treated as the long option --foo. (The - W option is reserved by
-  // POSIX.2 for implementation extensions.) This behavior is a GNU
-  // extension, not available with libraries before glibc 2.
-  while ((c = getopt_long(argc, argv, "hvslFCu!m::M:f:I:P:t:p:", long_options, &long_index)) != -1)
-  {
-    switch (c) {
-    case 's': // stdin
-      from_stdin = true;
-      break;
-    case 'q': // quiet
-      quiet = true;
-      break;
-    case 'I': // include-path
-      sass_compiler_add_include_paths(compiler, optarg);
-      break;
-    case 'P': // plugin-path
-      sass_compiler_load_plugins(compiler, optarg);
-      break;
-    case 'x': // color
-      sass_compiler_set_logger_colors(compiler, true);
-      break;
-    case 'X': // no-color
-      sass_compiler_set_logger_colors(compiler, false);
-      break;
-    case 'y': // unicode
-      sass_compiler_set_logger_unicode(compiler, true);
-      break;
-    case 'Y': // no-unicode
-      sass_compiler_set_logger_unicode(compiler, false);
-      break;
-    case 'F': // sourcemap-file-urls
-      sass_compiler_set_srcmap_file_urls(compiler, true);
-      break;
-    case 'C': // sourcemap-contents
-      sass_compiler_set_srcmap_embed_contents(compiler, true);
-      break;
-    case 'M': // sourcemap-path
-      sass_compiler_set_srcmap_path(compiler, optarg);
-      break;
+  // Create the option parser and attach compiler to it
+  // Whenever we parse options it will setup the compiler.
+  struct SassGetOpt* getopt = sass_make_getopt(compiler);
 
-    case 'f': // format
-      // Search for the string in the available options
-      for (i = 0; i < NUM_IMPORT_FORMAT_STRINGS; ++i) {
-        if (strcmp(optarg, import_format_strings[i].string) == 0) {
-          format = import_format_strings[i].type;
-          break;
-        }
-      }
-      // Check if we didn't find a valid one
-      if (i == NUM_IMPORT_FORMAT_STRINGS) {
-        fprintf(stderr, "Invalid argument for -f flag: '%s'. Allowed arguments are:", optarg);
-        for (i = 0; i < NUM_IMPORT_FORMAT_STRINGS; ++i) {
-          fprintf(stderr, i > 0 ? ", %s" : " %s",
-            import_format_strings[i].string);
-        }
-        fprintf(stderr, "\n");
-        invalid_usage(argv[0]);
-      }
-      break;
-    case 't':
-      // Search for the string in the available options
-      for (i = 0; i < NUM_STYLE_OPTION_STRINGS; ++i) {
-        if (strcmp(optarg, style_option_strings[i].string) == 0) {
-          sass_compiler_set_output_style(compiler, style_option_strings[i].type);
-          break;
-        }
-      }
-      // Check if we didn't find a valid one
-      if (i == NUM_STYLE_OPTION_STRINGS) {
-        fprintf(stderr, "Invalid argument for -t flag: '%s'. Allowed arguments are:", optarg);
-        for (i = 0; i < NUM_STYLE_OPTION_STRINGS; ++i) {
-          fprintf(stderr, i > 0 ? ", %s" : " %s",
-            style_option_strings[i].string);
-        }
-        fprintf(stderr, "\n");
-        invalid_usage(argv[0]);
-      }
-      break;
-    case 'l': // line-numbers or line-comments
-      // sass_compiler_set_source_comments(compiler, true);
-      break;
-    case 'm': // sourcemap
-      if (optarg) { // optional argument
-        // Search for the string in the available options
-        for (i = 0; i < NUM_SRC_MAP_MODE_STRINGS; ++i) {
-          if (strcmp(optarg, src_map_mode_strings[i].string) == 0) {
-            sass_compiler_set_srcmap_mode(compiler, src_map_mode_strings[i].type);
-            break;
-          }
-        }
-        // Check if we didn't find a valid one
-        if (i == NUM_SRC_MAP_MODE_STRINGS) {
-          fprintf(stderr, "Invalid argument for -m flag: '%s'. Allowed arguments are:", optarg);
-          for (i = 0; i < NUM_SRC_MAP_MODE_STRINGS; ++i) {
-            fprintf(stderr, i > 0 ? ", %s" : " %s",
-              src_map_mode_strings[i].string);
-          }
-          fprintf(stderr, "\n");
-          invalid_usage(argv[0]);
-        }
-      }
-      else {
-        // Default case if no argument is given
-        sass_compiler_set_srcmap_mode(compiler,
-          SASS_SRCMAP_CREATE);
-      }
-      break;
-    case 'p': // precision
-      sass_compiler_set_precision(compiler, atoi(optarg)); // TODO: make this more robust
-      if (sass_compiler_get_precision(compiler) < 0) sass_compiler_set_precision(compiler, 10);
-      break;
-    case 'v':
-      print_version();
-      sass_delete_compiler(compiler);
-      return 0;
-    case 'h':
-      print_usage(argv[0]);
-      sass_delete_compiler(compiler);
-      return 0;
-    case '?':
-      /* Unrecognized flag or missing an expected value */
-      /* getopt should produce it's own error message for this case */
-      invalid_usage(argv[0]);
-    default:
-      fprintf(stderr, "Unknown error while processing arguments\n");
-      sass_delete_compiler(compiler);
-      return 2;
-    }
+  // Populate GetOpt parser with defaults
+  sass_getopt_populate_options(getopt);
+  sass_getopt_populate_arguments(getopt);
+
+  // Additional option parser target (just call me)
+  sass_getopt_register_option(getopt, 'v', "version",
+    "Display linked LibSass versions.",
+    false, NULL, false, NULL,
+    getopt_version_cmd);
+
+  // Additional option parser target (just call me)
+  sass_getopt_register_option(getopt, 'h', "help",
+    "Show basic usage information.",
+    false, NULL, false, NULL,
+    getopt_help_cmd);
+
+  // Now parse all passed arguments
+  for (int i = 1; i < argc; i += 1) {
+    sass_getopt_parse(getopt, argv[i]);
   }
 
-  // Check for valid argument range
-  // Only supports up to two arguments
-  if (optind < argc - 2) {
-    fprintf(stderr, "Error: Too many arguments.\n");
-    sass_delete_compiler(compiler);
-    invalid_usage(argv[0]);
-  }
-
-  char* outfile = 0;
-  const char* dash = "-";
-//  char* source_map_file = 0;
-  struct SassImport* entry = 0;
-  // Create the compiler entry point according to given options
-  if (optind < argc && strcmp(argv[optind], dash) != 0 && !from_stdin) {
-    if (optind + 1 < argc) {
-      outfile = argv[optind + 1];
-    }
-    // Create the entry point request (don't read yet)
-    entry = sass_make_file_import(argv[optind]);
-
-  }
-  else {
-    if (optind < argc) {
-      outfile = argv[optind];
-    }
-
-    entry = sass_make_stdin_import(NULL);
-  }
-
-// Set import format (defaults to auto)
-  sass_import_set_syntax(entry, format);
-  // Set the entry point for the compilation
-  sass_compiler_set_entry_point(compiler, entry);
-  // Entry point now passed to compiler, so its reference count was increased
-  // in order to not leak memory we must release our own usage (usage after is UB)
-  sass_delete_import(entry);
-
-  // Set output path for compiler to deduct other asset paths
-  // Compiler does not write to the file itself, but will
-  // prepare everything for you to do the actual writing.
-  sass_compiler_set_output_path(compiler, outfile);
+  // Delete the parser to finalize parsing
+  // Errors if we wait for required arguments
+  sass_delete_getopt(getopt);
 
   // Execute all compiler steps and write/print results
-  int result = sass_compiler_execute(compiler, quiet);
+  int result = sass_compiler_execute(compiler);
 
   // Everything done, now clean-up
   sass_delete_compiler(compiler);
 
   #ifdef _WIN32
-    return result ? ERROR_INVALID_DATA : 0; // The data is invalid.
+    return result ? ERROR_INVALID_DATA : 0; // data invalid
   #else
     return result ? EX_DATAERR : 0; // data format error
   #endif
