@@ -220,7 +220,7 @@ $(DESTDIR)$(PREFIX)/bin/:
 	$(MKDIR) $(DESTDIR)$(PREFIX)/bin
 
 $(DESTDIR)$(PREFIX)/bin/%: bin/%
-	$(INSTALL) -D -v -m0755 "$<" "$@"
+	$(INSTALL) -d -v -m0755 "$<" "$@"
 
 install: libsass-install-$(BUILD) \
 	$(DESTDIR)$(PREFIX)/$(SASSC_EXE)
