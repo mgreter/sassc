@@ -98,6 +98,8 @@ void getopt_help_cmd(struct SassGetOpt* getopt, union SassOptionValue value)
 
 int main(int argc, char** argv)
 {
+  int i;
+
   #ifdef _MSC_VER
   _set_error_mode(_OUT_TO_STDERR);
   _set_abort_behavior(0, _WRITE_ABORT_MSG);
@@ -138,7 +140,7 @@ int main(int argc, char** argv)
     getopt_help_cmd);
 
   // Now parse all passed arguments
-  for (int i = 1; i < argc; i += 1) {
+  for (i = 1; i < argc; i += 1) {
     sass_getopt_parse(getopt, argv[i]);
   }
 
